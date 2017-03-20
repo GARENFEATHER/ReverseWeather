@@ -15,6 +15,8 @@ int main() {
 
 	sockfd=socket(AF_INET, SOCK_STREAM, 0);
 	memset(&servaddr, 0, sizeof(servaddr), 0);
-	servaddr.sin_family=AF_INET
-	servaddr.sin_addr.s_addr=inet_addr()
+	servaddr.sin_family=AF_INET;
+	servaddr.sin_addr.s_addr=inet_addr();
+
+    printf("Im so tired...");
 }
