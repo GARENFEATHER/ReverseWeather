@@ -1,0 +1,4 @@
+gcc -g -c client.c
+gcc -o client client.o
+rm -f client.o
+./client 127.0.0.1
