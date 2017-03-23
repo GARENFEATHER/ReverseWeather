@@ -14,7 +14,7 @@ int main(int argc, char const *argv[])
 {
 	Byte message[23];
 	char city[]="nanjing";
-	int i,k,int sockfd;
+	int i,k,sockfd;
 	struct sockaddr_in servaddr;
 	char sendline[MAXLINE], recvline[MAXLINE];
 	char src[]="114.212.191.33";
@@ -25,7 +25,9 @@ int main(int argc, char const *argv[])
 		message[i]=city[k];
 	for(;i<23;i++)
 		message[i]=0x00;
-
+	for(i=0;i<23;i++)
+		printf("%0x ", message[i]);
+	printf("\n");
 	sockfd=socket(AF_INET, SOCK_STREAM, 0);
 	memset(&servaddr,  0,  sizeof(servaddr));
 	servaddr.sin_family=AF_INET;
@@ -33,12 +35,15 @@ int main(int argc, char const *argv[])
 	servaddr.sin_port=htons(SERV_PORT);
 
 	connect(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
-	send(sockfd, message, strlen(message), 0);
+	printf("strlen: %d\n", sizeof(message));
+	send(sockfd, message, sizeof(message), 0);
 	if(recv(sockfd, recvline, MAXLINE, 0) == 0) {
 		perror("The server terminated prematurely");
 		exit(4);
 	}
-	printf("%s", "String received from the server: ");
-	fputs(recvline, stdout);
+	printf("%s\n", "String received from the server: ");
+	for(i=0;i<77;i++)
+		printf("%x ", recvline[i]);
+	printf("\n");
 	return 0;
 }
