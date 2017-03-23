@@ -19,14 +19,13 @@ int main(int argc, char const *argv[])
 	char sendline[MAXLINE], recvline[MAXLINE];
 	char src[]="114.212.191.33";
 
-	message[0]=0x01;
-	message[1]=0x00;
+	message[0]=0x02;
+	message[1]=0x02;
 	for(i=2,k=0;k<strlen(city);i++,k++) 
 		message[i]=city[k];
 	for(;i<23;i++)
 		message[i]=0x00;
-	for(i=0;i<23;i++)
-		printf("%0x ", message[i]);
+	message[22]=0x03;
 	printf("\n");
 	sockfd=socket(AF_INET, SOCK_STREAM, 0);
 	memset(&servaddr,  0,  sizeof(servaddr));
