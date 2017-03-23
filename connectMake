@@ -1,4 +1,3 @@
 gcc -g -c connect.c
 gcc -o connect connect.o
-rm -rf connect.o
 ./connect

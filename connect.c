@@ -1,10 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <string.h>
 
 #define MAX_INPUT 1024
 #define SENT_LENGTH 23
 #define RECV_LENGTH 77
+#define SERV_PORT 4321
 #define DST_ADDR "114.212.191.33"
 
 int sockfd;
@@ -29,23 +33,22 @@ void query() {
 }
 
 int realCity(char *cityInput) {
-	int i;
-	for(i=0;i<availableCity;i++)
-		if(cityInput == cities[i]) return 1;
+	int i,j,k;
+	for(i=0;i<availableCity;i++) {
+		for(j=0,k=0;k<strlen(cities[i]);j++,k++)
+			if(cityInput[j] != cities[i][k]) break;
+		if(k == strlen(cities[i])) return 1;
+	}
 	return 0;
 }
 
-//return 
-int queryCheck(char *queryInput) {
-	//todo
-	return 1;
-}
-
 int commandCheck(char *queryInput, char mode) {
-	if(mode == 'b' && queryInput == "r") return 1;
-	if(queryInput == "#") exit(0);
-	else if(queryInput == "c") {
-		//clear 
+	if(strlen(queryInput) != 1) return 0;
+	if(mode == 'b' && queryInput[0] == 'r') return 1;
+	if(queryInput[0] == '#') exit(0);
+	else if(queryInput[0] == 'c') {
+		system("clear");
+		return 1;
 	}
 	return 0;
 }
@@ -63,32 +66,25 @@ void threeDays(char *cityInput) {
 }
 
 void oneDay(char *cityInput, int number) {
-	if(number>8) printf("Sorry, no given day's weather information for city %s!\n", cityInput);
-	else {
-		int weatherNumber=4,tempNumber=4;
-		//random
-		printf("City: %s  Today is: 2017/03/23  Weather information is as follows:\n", cityInput);
-		if(number == 1) printf("Today's Weather is: %s;  Temp:%d\n", weathers[weatherNumber], tempNumber);
-		else printf("The %dth day's Weather is: %s;  Temp:%d\n",cityInput, number);
-	}
+	int weatherNumber=4,tempNumber=4;
+	//random
+	printf("City: %s  Today is: 2017/03/23  Weather information is as follows:\n", cityInput);
+	if(number == 1) printf("Today's Weather is: %s;  Temp:%d\n", weathers[weatherNumber], tempNumber);
+	else printf("The %dth day's Weather is: %s;  Temp:%d\n",cityInput, number);
 }
 
 void processQuery(char *cityInput,char *queryInput) {
+	char sendline[MAX_INPUT],recvline[MAX_INPUT];
 	if(strlen(queryInput) == 1) {
-		if(queryInput[0] == '1') {
-			//send
-			oneDay(cityInput, 1);
-		} else if(queryInput[0] == '2') {
-			//send
-			threeDays(cityInput);
-		} else if(queryInput[0] == '3') {
+		if(queryInput[0] == '1') sendAndRecv(sendline, cityInput, 2, 1, 1, recvline, 1);
+		else if(queryInput[0] == '2') sendAndRecv(sendline, cityInput, 2, 2, 3, recvline, 3);
+		else if(queryInput[0] == '3') {
 			while(1) {
 				printf("Please enter the day number(below 10, e.g. 1 means today):");
 				scanf("%s",queryInput);
-				int day=-1;
-				//convert
-				if(day < 10 && day > 1) {
-					//send
+				int day=(strlen(queryInput) == 1) ? (queryInput[0]-'0') : -1;
+				if(day < 10 && day >= 1) {
+					sendAndRecv(sendline, cityInput, 2, 1, day, recvline, day);
 					break;
 				} else printf("input error\n");
 			}
@@ -97,7 +93,7 @@ void processQuery(char *cityInput,char *queryInput) {
 }
 
 void initConnection() {
-	int result=;
+	int result;
 	sockfd=socket(AF_INET, SOCK_STREAM, 0);
 	memset(&servaddr,  0,  sizeof(servaddr));
 	servaddr.sin_family=AF_INET;
@@ -119,35 +115,59 @@ void segmentConstruction(char *sendline, char *content, int type, int mode, int 
 	sendline[SENT_LENGTH-1]=day;
 }
 
-int segmentAnaly(char *recvline) {
-	char *cityInput[MAX_INPUT];
+int segmentAnaly(char *recvline, int day) {
+	char cityInput[MAX_INPUT];
 	int i,k;
 	if(recvline[0] == 0x01) return 1;
 	else {
 		for(i=2,k=0;recvline[i] != 0x00;i++,k++)
 			cityInput[k]=recvline[i];
 		cityInput[k]='\0';
-		if(recvline[1] == 0x41) oneDay(cityInput,)
+		if(recvline[0] == 0x04) printf("Sorry, no given day's weather information for city %s!\n", cityInput);
+		else {
+			if(recvline[1] == 0x42) threeDays(cityInput);
+			else if(recvline[1] == 0x41) {
+				printf("%s %d\n", cityInput, day);
+				oneDay(cityInput, day);
+			}
+		}
 	}
 	return 0;
 }
+
+int sendAndRecv(char *sendline, char *content, int type, int mode, int sentDay, char *recvline, int recvDay) {
+	int result=0;
+	segmentConstruction(sendline, content, type, mode, sentDay);
+	send(sockfd, sendline, SENT_LENGTH, 0);
+	if(recv(sockfd, recvline, MAX_INPUT, 0) == 0) {
+		perror("The server terminated prematurely");
+		exit(4);
+	} else result=segmentAnaly(recvline, recvDay);
+	return result;
+}
+
 int main(int argc, char const *argv[])
 {
-	char cityInput[MAX_INPUT],queryInput[MAX_INPUT],segment[MAX_INPUT];
+	char cityInput[MAX_INPUT],queryInput[MAX_INPUT],sendline[MAX_INPUT],recvline[MAX_INPUT];
 	initConnection();
+	system("clear");
 	while(1) {
-		//clear scream
 		welcome();
 		scanf("%s",cityInput);
-		commandCheck(cityInput, 'a');
+		if(commandCheck(cityInput, 'a')) continue;
 		if(realCity(cityInput)) {
-			segmentConstruction(segment);
-			send(sockfd, segment, SENT_LENGTH, 0);
-			//clear scream
+			if(!sendAndRecv(sendline, cityInput, 1, 0, 0, recvline, 1)) {
+				printf("connect failed\n");
+				exit(0);
+			}
+			system("clear");
 			query();
 			while(1) {
 				scanf("%s",queryInput);
-				if(commandCheck(queryInput, 'b')) break;
+				if(commandCheck(queryInput, 'b')) {
+					system("clear");
+					break;
+				}
 				processQuery(cityInput, queryInput);
 			}
 		} else printf("Sorry, Server does not have weather information for city %s!\n", cityInput);
