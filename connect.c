@@ -70,7 +70,7 @@ void oneDay(char *cityInput, int number) {
 	//random
 	printf("City: %s  Today is: 2017/03/23  Weather information is as follows:\n", cityInput);
 	if(number == 1) printf("Today's Weather is: %s;  Temp:%d\n", weathers[weatherNumber], tempNumber);
-	else printf("The %dth day's Weather is: %s;  Temp:%d\n", number, weathers[weatherNumber]);
+	else printf("The %dth day's Weather is: %s;  Temp:%d\n", number, weathers[weatherNumber], tempNumber);
 }
 
 void processQuery(char *cityInput,char *queryInput) {
@@ -88,7 +88,7 @@ void processQuery(char *cityInput,char *queryInput) {
 					break;
 				} else printf("input error\n");
 			}
-		}
+		}  else printf("input error!\n");
 	} else printf("input error!\n");
 }
 
@@ -100,8 +100,12 @@ void initConnection() {
 	servaddr.sin_addr.s_addr=inet_addr(DST_ADDR);
 	servaddr.sin_port=htons(SERV_PORT);
 
+	setTimeOut(5);
 	result=connect(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
-	if(result == -1) exit(0);
+	if(result == -1) {
+		printf("Can Not Connect To Server %s\n", DST_ADDR);
+		exit(0);
+	}
 }
 
 void segmentConstruction(char *sendline, char *content, int type, int mode, int day) {
@@ -136,11 +140,33 @@ int sendAndRecv(char *sendline, char *content, int type, int mode, int sentDay, 
 	int result=0;
 	segmentConstruction(sendline, content, type, mode, sentDay);
 	send(sockfd, sendline, SENT_LENGTH, 0);
-	if(recv(sockfd, recvline, MAX_INPUT, 0) == 0) {
+	result=recv(sockfd, recvline, MAX_INPUT, 0);
+	if(result == 0) {
 		perror("The server terminated prematurely");
 		exit(4);
-	} else result=segmentAnaly(recvline, recvDay);
+	} else if(result == -1) {
+		if(errno == EINPROGRESS) printf("Receive Data From Server %s Failed!\n", DST_ADDR);
+	}
+	else result=segmentAnaly(recvline, recvDay);
 	return result;
+}
+
+void setTimeOut(int time) {
+	int ret;
+	struct timeval timeout;
+	timeout.tv_sec = time;  
+    timeout.tv_usec = 0;
+    socklen_t len = sizeof(timeout);
+    ret=setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, len);
+    if(ret == -1) {
+    	printf("set send timeout failed!\n");
+    	exit(0);
+    }
+    ret=setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, len);
+    if(ret == -1) {
+    	printf("set receive timeout failed!\n");
+    	exit(0);
+    }
 }
 
 int main(int argc, char const *argv[])
@@ -153,10 +179,7 @@ int main(int argc, char const *argv[])
 		scanf("%s",cityInput);
 		if(commandCheck(cityInput, 'a')) continue;
 		if(realCity(cityInput)) {
-			if(!sendAndRecv(sendline, cityInput, 1, 0, 0, recvline, 1)) {
-				printf("connect failed\n");
-				exit(0);
-			}
+			sendAndRecv(sendline, cityInput, 1, 0, 0, recvline, 1);
 			system("clear");
 			query();
 			while(1) {
