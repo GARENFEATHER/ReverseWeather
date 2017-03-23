@@ -70,7 +70,7 @@ void oneDay(char *cityInput, int number) {
 	//random
 	printf("City: %s  Today is: 2017/03/23  Weather information is as follows:\n", cityInput);
 	if(number == 1) printf("Today's Weather is: %s;  Temp:%d\n", weathers[weatherNumber], tempNumber);
-	else printf("The %dth day's Weather is: %s;  Temp:%d\n",cityInput, number);
+	else printf("The %dth day's Weather is: %s;  Temp:%d\n", number, weathers[weatherNumber]);
 }
 
 void processQuery(char *cityInput,char *queryInput) {
@@ -126,10 +126,7 @@ int segmentAnaly(char *recvline, int day) {
 		if(recvline[0] == 0x04) printf("Sorry, no given day's weather information for city %s!\n", cityInput);
 		else {
 			if(recvline[1] == 0x42) threeDays(cityInput);
-			else if(recvline[1] == 0x41) {
-				printf("%s %d\n", cityInput, day);
-				oneDay(cityInput, day);
-			}
+			else if(recvline[1] == 0x41) oneDay(cityInput, day);
 		}
 	}
 	return 0;
